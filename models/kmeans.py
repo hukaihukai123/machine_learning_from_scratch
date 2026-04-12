@@ -1,7 +1,7 @@
 import numpy as np
 from config import *
 rng = get_rng()
-class kmeans:
+class Kmeans:
     def __init__(self, n_clusters=5, max_iter=100,random_state=None,tol=1e-3):
         #X(m,n),
         self.n_clusters = n_clusters#k
