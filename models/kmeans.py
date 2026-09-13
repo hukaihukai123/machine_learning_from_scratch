@@ -2,15 +2,33 @@ import numpy as np
 from config import *
 rng = get_rng()
 class Kmeans:
-    def __init__(self, n_clusters=5, max_iter=100,random_state=None,tol=1e-3):
+    def __init__(self, n_clusters=5, max_iter=100,random_state=None,tol=1e-3,verbose=False,print_interval=100,Kmeans_plus_plus=True):
         #X(m,n),
         self.n_clusters = n_clusters#k
         self.max_iter = max_iter
-        self.centroids = None#(m,)(0,k-1) m个样本的属
+        self.centroids = None#(m,)(0,k-1) m个样本的属于
         self.cluster_centers = None#(k,n) 中心点集
-        self.lost_history=[]
+        self.loss_history=[]
         self.random_state = random_state
         self.tol = tol
+        self.verbose = verbose
+        self.print_interval = print_interval
+        self.Kmeans_plus_plus = Kmeans_plus_plus
+    def kmeans_plus_plus_init(self, X):
+        m,d=X.shape
+        if self.random_state is not None:
+            local_rng = np.random.RandomState(self.random_state)
+        else :
+            local_rng = get_rng()
+        idx=local_rng.randint(self.n_clusters)
+        self.cluster_centers.append(self.centroids[idx])
+        for _ in range(1,self.n_clusters):
+            distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
+            min_distances = np.min(distances, axis=1)
+            probabilities = min_distances / np.sum(min_distances)
+            next_idx = local_rng.choice(m, p=probabilities)
+            self.cluster_centers.append(X[next_idx])
+        
     def fit(self, X):
         m,n=X.shape
         k=self.n_clusters
@@ -18,17 +36,19 @@ class Kmeans:
             local_rng = np.random.RandomState(self.random_state)
         else :
             local_rng = get_rng()
-        center_choice=local_rng.choice(X.shape[0],self.n_clusters,replace=False)
-        self.cluster_centers = X[center_choice]
+        
+        if self.Kmeans_plus_plus:
+            self.kmeans_plus_plus_init(X)
+        else:
+            center_choice=local_rng.choice(X.shape[0],self.n_clusters,replace=False)
+            self.cluster_centers = X[center_choice]
         loss1=0
         loss2=1
         iterations=0
         M=np.zeros((m,k))
         while np.abs(loss2 - loss1) / np.abs(loss1 + 1e-10) > self.tol:
-            for i in range (m):
-                for j in range(k):
-                    M[i,j]=np.sum((X[i]-self.cluster_centers[j])**2)
-            self.centroids=np.argmin(M,axis=1)
+           distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
+            self.centroids=np.argmin(distances,axis=1)
 
 
             new_centers = np.zeros((k, n))
@@ -47,7 +67,10 @@ class Kmeans:
                 break
             loss1=loss2
             loss2=self._loss(X)
-            print(f"Iteration {iterations}, loss: {loss2:.6f}")
+            if  self.verbose and iterations % self.print_interval == 0:
+                print(f"Iteration {iterations}, loss: {loss2:.6f}")
+
+        return self
 
     def _loss(self,X):
         m=X.shape[0]
@@ -56,9 +79,13 @@ class Kmeans:
             cluster_idx = self.centroids[i]
             diff = X[i] - self.cluster_centers[cluster_idx]
             loss += np.sum(diff ** 2)
-        self.lost_history.append(loss)
+        self.loss_history.append(loss)
         return loss
     def parameter(self):
        return self.centroids,self.cluster_centers
+
+    def predict(self, X):
+        distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
+        return np.argmin(distances, axis=1)
 
 

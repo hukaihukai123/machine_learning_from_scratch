@@ -1,6 +1,7 @@
 import numpy as np
 class linearregression:
-    def __init__(self,method='gd',learning_rate=0.001,n_iterations=1000,tol=1e-6,fit_intercept=True):
+    def __init__(self,method='gd',learning_rate=0.001,n_iterations=1000,tol=1e-6,fit_intercept=True,verbose=False,print_interval=100):
+        """初始化线性回归模型 method: 'gd' or 'closed_form'"""
         self.method = method
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
@@ -8,6 +9,8 @@ class linearregression:
         self.fit_intercept = fit_intercept
         self.theta = None
         self.loss_history =[]
+        self.verbose = verbose
+        self.print_interval = print_interval
 
     def _add_intercept(self, X):
         if self.fit_intercept:
@@ -19,10 +22,14 @@ class linearregression:
 
     def fit(self, X, y):
         X=self._add_intercept(X)
+        if self.method not in ['gd', 'closed_form']:
+            raise ValueError("method must be 'gd' or 'closed_form'")
         if self.method == 'gd':
             self._gradient_descent(X,y)
         else:
             self._closed_form_solution(X,y)
+
+        return self
 
 
     def _closed_form_solution(self, X, y):
@@ -44,7 +51,7 @@ class linearregression:
         lossval2= self.lossfunction( X, y, self.theta)
         self.loss_history.append(lossval2)
         while np.abs(lossval2 - lossval1) / np.abs(lossval1 + 1e-10) > self.tol:
-            gradient=X.T@X@self.theta-X.T@y
+            gradient=X.T@(X@self.theta-y)/len(y)
             self.theta=self.theta-self.learning_rate*gradient
             lossval1=lossval2
             lossval2=self.lossfunction( X, y, self.theta)
@@ -52,7 +59,7 @@ class linearregression:
             self.loss_history.append(lossval2)
             if it>self.n_iterations:
                 break
-            if it%1==0:
+            if self.verbose and it % self.print_interval == 0:
                 print("iteration:",it,"loss:",lossval2)
 
 
@@ -60,9 +67,9 @@ class linearregression:
     def predict(self, X):
         X = self._add_intercept(X)
         y=X@self.theta
-        return y,self.theta
+        return y
 class LogisticRegression:
-    def __init__(self, learning_rate=0.01, n_iterations=1000,regularization=None, C=0.01,tol=1e-6,fit_intercept=True):
+    def __init__(self, learning_rate=0.01, n_iterations=1000,regularization=None, C=0.01,tol=1e-6,fit_intercept=True,verbose=False,print_interval=100):
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
         self.regularization = regularization
@@ -71,10 +78,14 @@ class LogisticRegression:
         self.loss_history = []
         self.tol = tol
         self.fit_intercept = fit_intercept
+        self.verbose = verbose
+        self.print_interval = print_interval
     def _sigmoid(self, z):
         return 1 / (1 + np.exp(-z))
     def _loss(self, X, y):
         hx=self._sigmoid(X@self.theta)
+        eps = 1e-12
+        hx = np.clip(hx, eps, 1 - eps)
         loss=-np.sum(y*np.log(hx)+(1-y)*np.log(1-hx))
         return loss
     def fit(self, X, y):
@@ -92,17 +103,22 @@ class LogisticRegression:
             if self.regularization is None:
                 self.theta += self.learning_rate*X.T@(y-self._sigmoid(X@self.theta))
             elif self.regularization == "l2":
-                self.theta += self.learning_rate * (X.T @ (y - self._sigmoid(X @ self.theta))+2*self.C*self.theta)
+                self.theta += self.learning_rate * (X.T @ (y - self._sigmoid(X @ self.theta)) - 2/self.C*self.theta)
             elif self.regularization == "l1":
-                self.theta += self.learning_rate * (X.T @ (y - self._sigmoid(X @ self.theta)) + 2* self.C*np.sign(self.theta) )
+                self.theta += self.learning_rate * (X.T @ (y - self._sigmoid(X @ self.theta)) - 2/self.C*np.sign(self.theta) )
             loss1=loss2
             loss2=self._loss(X,y)
             it+=1
             if it>self.n_iterations:
                 break
             self.loss_history.append(loss2)
-            print("iteration:", it, "loss:", loss2)
+            if  self.verbose and it % self.print_interval == 0:
+                print("iteration:", it, "loss:", loss2)
+        return self
     def predict_proba(self, X):
+        if self.fit_intercept:
+            bias=np.ones((X.shape[0],1))
+            X=np.concatenate((bias,X),axis=1)
         y_pre=self._sigmoid(X@self.theta)
         return y_pre
     def predict(self, X, threshold=0.5):

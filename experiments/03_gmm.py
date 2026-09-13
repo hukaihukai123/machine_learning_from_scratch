@@ -2,36 +2,6 @@ import numpy as np
 from utils.metrics import *
 from data.synthetic.gmm_data import generate_gmm_data
 from models.gmm import *
-# =========================
-# 1. 生成数据（GMM）
-# =========================
-def generate_gmm_data(n_samples, weights, means, covariances, seed=42):
-    np.random.seed(seed)
-
-    K = len(weights)
-    D = len(means[0])
-
-    weights = np.array(weights)
-    means = np.array(means)
-    covariances = np.array(covariances)
-
-    # 采样组件
-    z = np.random.choice(K, size=n_samples, p=weights)
-
-    X = np.zeros((n_samples, D))
-    y = z.copy()
-
-    for k in range(K):
-        idx = np.where(z == k)[0]
-        if len(idx) > 0:
-            X[idx] = np.random.multivariate_normal(
-                means[k],
-                covariances[k],
-                size=len(idx)
-            )
-
-    return X, y
-
 
 # =========================
 # 2. 标签对齐（关键！！）

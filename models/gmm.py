@@ -11,32 +11,17 @@ class GaussianMixtureModel:
         self.log_likelihood_history = []
     def _e_step(self, X):
 
-        """w= np.column_stack([self._Gauess(X,self.means[j],self.covariances[j]) for j in range(self.n_components)])
-        weighted_w = w * self.weights
-        responsibilities = weighted_w / np.sum(weighted_w, axis=1, keepdims=True)
-        return responsibilities数值不稳定"""
-        n_samples = X.shape[0]
-        n_components = self.n_components
-
-        # 初始化责任度矩阵
-        responsibilities = np.zeros((n_samples, n_components))
-
-        # 对每个样本计算责任度
-        for i in range(n_samples):
-            total = 0
-            for j in range(n_components):
-                # 传递单个样本 X[i]
-                prob = self.weights[j] * self._Gauess(X[i], self.means[j], self.covariances[j])
-                responsibilities[i, j] = prob
-                total += prob
-
-            # 归一化
-            if total > 0:
-                responsibilities[i, :] /= total
-            else:
-                # 防止除零
-                responsibilities[i, :] = 1.0 / n_components
-
+        """执行E步，计算每个样本属于每个高斯分布的责任,数值较为稳定"""
+        n_samples,d = X.shape
+        k = self.n_components
+        log_prob = np.zeros((k, n_samples))
+        for j in range(k):
+            log_prob[j] =  self._log_gaussian(X, self.means[j], self.covariances[j])
+        log_weighted=log_prob + np.log(self.weights[:, np.newaxis])
+        a_max=np.max(log_weighted,axis=0,keepdims=True)
+        exp_shifted=np.exp(log_weighted-a_max)
+        denom=np.sum(exp_shifted,axis=0,keepdims=True)
+        responsibilities=(exp_shifted/denom).T
         return responsibilities
     def _m_step(self, X, responsibilities):
         N, D = X.shape
@@ -105,7 +90,24 @@ class GaussianMixtureModel:
 
 
         # 迭代EM直到收敛
+    def _log_gaussian(self, X, mean, cov):
+        """
+        X: (n_samples, d) 或 (d,)
+        返回: (n_samples,) 每个样本的对数高斯密度
+        """
+        d = X.shape[-1]
+        diff = X - mean                       # (n, d)
 
+        # 用 Cholesky 分解求 log|Σ| 和马氏距离，数值最稳
+        L = np.linalg.cholesky(cov)           # Σ = L L^T
+        # 解 L z = diff^T，得到 z = L^{-1} diff^T
+        z = np.linalg.solve(L, diff.T)        # (d, n)
+        mahalanobis = np.sum(z ** 2, axis=0)  # (n,)
+
+        log_det = 2.0 * np.sum(np.log(np.diag(L)))
+        log_norm = -0.5 * (d * np.log(2 * np.pi) + log_det)
+
+        return log_norm - 0.5 * mahalanobis   # (n,)
     def _Gauess(self, X, mean, cov):
         """计算高斯分布（支持单个样本和批量）"""
         X = np.asarray(X)
