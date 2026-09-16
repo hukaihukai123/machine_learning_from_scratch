@@ -16,9 +16,9 @@ class DecisionTreeCART:
         X=np.asarray(X)
         y=np.asarray(y)
         if sample_weight is not None:
-            sample_weight=np.asarray(sample_weight,dtype=np.float32)
+            sample_weight=np.asarray(sample_weight,dtype=np.float64)
         else:
-            sample_weight=np.ones(len(y), dtype=np.float32)/len(y)
+            sample_weight=np.ones(len(y), dtype=np.float64)/len(y)
         if self.discrete:
             self.classes_,y_encoded = np.unique(y, return_inverse=True)
             self.n_classes_ = len(self.classes_)
@@ -90,8 +90,8 @@ class DecisionTreeCART:
                 thresholds = np.asarray(thresholds)
                 classes = np.asarray(classes)
                 weights = np.asarray(weights)
-                weight_left = np.zeros(self.n_classes_, dtype=np.float32)
-                weight_right = np.array([np.sum(weights[classes == i]) for i in range(self.n_classes_)], dtype=np.float32)
+                weight_left = np.zeros(self.n_classes_, dtype=np.float64)
+                weight_right = np.array([np.sum(weights[classes == i]) for i in range(self.n_classes_)], dtype=np.float64)
 
                 for i in range(1, m):
                     c = classes[i - 1]
