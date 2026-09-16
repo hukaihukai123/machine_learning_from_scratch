@@ -41,7 +41,7 @@ class linearregression:
 
     def lossfunction(self,X,y,theta):
         residuals = y - X @ theta
-        loss = 0.5 * (residuals.T @ residuals)
+        loss = 0.5 * np.mean(residuals ** 2)
         return loss
 
     def _gradient_descent(self, X, y):
@@ -57,7 +57,7 @@ class linearregression:
             lossval2=self.lossfunction( X, y, self.theta)
             it+=1
             self.loss_history.append(lossval2)
-            if it>self.n_iterations:
+            if it>=self.n_iterations:
                 break
             if self.verbose and it % self.print_interval == 0:
                 print("iteration:",it,"loss:",lossval2)
@@ -109,7 +109,7 @@ class LogisticRegression:
             loss1=loss2
             loss2=self._loss(X,y)
             it+=1
-            if it>self.n_iterations:
+            if it>=self.n_iterations:
                 break
             self.loss_history.append(loss2)
             if  self.verbose and it % self.print_interval == 0:
@@ -122,9 +122,6 @@ class LogisticRegression:
         y_pre=self._sigmoid(X@self.theta)
         return y_pre
     def predict(self, X, threshold=0.5):
-        if self.fit_intercept:
-            bias=np.ones((X.shape[0],1))
-            X=np.concatenate((bias,X),axis=1)
         y_pre_pro=self.predict_proba(X)
         y_pre=np.where(y_pre_pro>threshold, 1, 0)
         return y_pre

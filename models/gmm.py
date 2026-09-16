@@ -42,6 +42,7 @@ class GaussianMixtureModel:
     def fit(self, X):
         """训练模型"""
         # 初始化参数（K-Means或随机）
+        self.log_likelihood_history = []
         init_kmeans=Kmeans( n_clusters=self.n_components, max_iter=100,random_state=None,tol=1e-3)
         init_kmeans.fit(X)
         a,self.means=init_kmeans.parameter()
@@ -90,6 +91,7 @@ class GaussianMixtureModel:
 
 
         # 迭代EM直到收敛
+        return self
     def _log_gaussian(self, X, mean, cov):
         """
         X: (n_samples, d) 或 (d,)

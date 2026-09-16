@@ -14,22 +14,42 @@ class Kmeans:
         self.verbose = verbose
         self.print_interval = print_interval
         self.Kmeans_plus_plus = Kmeans_plus_plus
-    def kmeans_plus_plus_init(self, X):
-        m,d=X.shape
-        if self.random_state is not None:
-            local_rng = np.random.RandomState(self.random_state)
-        else :
-            local_rng = get_rng()
-        idx=local_rng.randint(self.n_clusters)
-        self.cluster_centers.append(self.centroids[idx])
-        for _ in range(1,self.n_clusters):
-            distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
+    def kmeans_plus_plus_init(self, X, rng):
+        m = X.shape[0]
+
+        first_idx = rng.randint(m)
+        centers = [X[first_idx].copy()]
+
+        for _ in range(1, self.n_clusters):
+            centers_array = np.asarray(centers)
+
+            distances = np.sum(
+                (X[:, None, :] - centers_array[None, :, :]) ** 2,
+                axis=2
+            )
             min_distances = np.min(distances, axis=1)
-            probabilities = min_distances / np.sum(min_distances)
-            next_idx = local_rng.choice(m, p=probabilities)
-            self.cluster_centers.append(X[next_idx])
-        
+            total_distance = np.sum(min_distances)
+
+            if total_distance <= 1e-12:
+                remaining_idx = rng.randint(m)
+                centers.append(X[remaining_idx].copy())
+            else:
+                probabilities = min_distances / total_distance
+                next_idx = rng.choice(m, p=probabilities)
+                centers.append(X[next_idx].copy())
+
+        return np.asarray(centers)
     def fit(self, X):
+        X = np.asarray(X, dtype=float)
+
+        if X.ndim != 2:
+            raise ValueError("X must be a 2D array")
+
+        if not 1 <= self.n_clusters <= len(X):
+            raise ValueError(
+            "n_clusters must satisfy 1 <= n_clusters <= n_samples"
+        )    
+
         m,n=X.shape
         k=self.n_clusters
         if self.random_state is not None:
@@ -38,16 +58,16 @@ class Kmeans:
             local_rng = get_rng()
         
         if self.Kmeans_plus_plus:
-            self.kmeans_plus_plus_init(X)
+            self.cluster_centers=self.kmeans_plus_plus_init(X,rng)
         else:
             center_choice=local_rng.choice(X.shape[0],self.n_clusters,replace=False)
-            self.cluster_centers = X[center_choice]
+            self.cluster_centers = X[center_choice].copy()
         loss1=0
         loss2=1
         iterations=0
         M=np.zeros((m,k))
         while np.abs(loss2 - loss1) / np.abs(loss1 + 1e-10) > self.tol:
-           distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
+            distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
             self.centroids=np.argmin(distances,axis=1)
 
 
