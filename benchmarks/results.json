@@ -1,0 +1,42 @@
+{
+  "linear_regression": {
+    "ours_mse": 0.03641420800569927,
+    "sklearn_mse": 0.03641420800569934,
+    "ours_ms": 0.3719999804161489,
+    "sklearn_ms": 5.625199992209673
+  },
+  "logistic_regression": {
+    "ours_accuracy": 0.8433333333333334,
+    "sklearn_accuracy": 0.84,
+    "ours_ms": 13.494499959051609,
+    "sklearn_ms": 6.7885000025853515
+  },
+  "kmeans": {
+    "ours_inertia": 1130.783318910168,
+    "sklearn_inertia": 1130.783318910168,
+    "ours_ari": 1.0,
+    "sklearn_ari": 1.0,
+    "ours_ms": 8.473000023514032,
+    "sklearn_ms": 141.60889998311177
+  },
+  "gmm": {
+    "ours_avg_log_likelihood": -3.752615079471698,
+    "sklearn_avg_log_likelihood": -3.7526150794674806,
+    "ours_ari": 1.0,
+    "sklearn_ari": 1.0,
+    "ours_ms": 8.711200032848865,
+    "sklearn_ms": 32.54330001072958
+  },
+  "pca": {
+    "ours_variance_ratio_sum": 0.4864543936058546,
+    "sklearn_variance_ratio_sum": 0.48645439360585474,
+    "ours_ms": 0.3336999798193574,
+    "sklearn_ms": 3.8043000386096537
+  },
+  "cart": {
+    "ours_accuracy": 0.6633333333333333,
+    "sklearn_accuracy": 0.6566666666666666,
+    "ours_ms": 616.6251000249758,
+    "sklearn_ms": 8.10430001001805
+  }
+}

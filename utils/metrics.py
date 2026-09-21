@@ -188,9 +188,9 @@ def classification_report(y_true, y_pred, labels=None):
     # 加权平均（按样本数加权）
     total_support = np.sum(supports)
     report['weighted_avg'] = {
-        'precision': np.sum(p * s for p, s in zip(precisions, supports)) / total_support,
-        'recall': np.sum(r * s for r, s in zip(recalls, supports)) / total_support,
-        'f1_score': np.sum(f * s for f, s in zip(f1s, supports)) / total_support
+        'precision': sum(p * s for p, s in zip(precisions, supports)) / total_support,
+        'recall': sum(r * s for r, s in zip(recalls, supports)) / total_support,
+        'f1_score': sum(f * s for f, s in zip(f1s, supports)) / total_support
     }
     return report
 def print_classification_report(y_true, y_pred, labels=None):

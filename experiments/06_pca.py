@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import load_iris
 from sklearn.decomposition import PCA as SklearnPCA
 
-from models.pca import PCA
+from models.PCA import PCA
 
 
 X, y = load_iris(return_X_y=True)

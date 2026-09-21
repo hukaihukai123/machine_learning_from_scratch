@@ -1,231 +1,142 @@
 # Machine Learning from Scratch
 
-> A small educational machine-learning library implemented primarily with NumPy.
+A small educational machine-learning library implemented with NumPy. The project exposes the optimization steps behind classical models instead of wrapping ready-made estimators. Scikit-learn is used only in reproducible comparison scripts.
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
-[![NumPy](https://img.shields.io/badge/NumPy-from%20scratch-013243.svg)](https://numpy.org/)
+## Implemented models
 
-This repository is my first attempt to turn the mathematical ideas behind classical machine-learning algorithms into working code. Instead of calling ready-made estimators, the core training procedures—including gradient descent, EM, CART splitting, backpropagation, SGD, and SMO—are implemented manually.
-
-The project is intended for learning and experimentation rather than production use. Scikit-learn is used only for dataset generation, metric comparison, and reference baselines in several demos.
-
-## Features
-
-| Category | Implementation | Highlights |
+| Area | Model | Implementation details |
 | --- | --- | --- |
-| Regression | Linear Regression | Gradient descent and closed-form solution; optional intercept |
-| Classification | Logistic Regression | Binary classification; L1/L2 regularization options |
-| Clustering | K-Means | Random centroid initialization, empty-cluster handling, convergence tracking |
-| Probabilistic Models | Gaussian Mixture Model | K-Means initialization, EM algorithm, posterior probabilities, sampling |
-| Dimensionality Reduction / Classification | Linear Discriminant Analysis | Binary LDA with a regularized within-class scatter matrix |
-| Kernel Methods | Support Vector Machine | Linear, RBF, polynomial, sigmoid, and custom kernels; SGD and SMO optimizers |
-| Tree Models | CART Decision Tree | Classification and regression; pre-pruning and validation-set post-pruning |
-| Neural Networks | BP Neural Network | One-hidden-layer binary classifier with ReLU, sigmoid, and manual backpropagation |
-| Utilities | Metrics and synthetic data | Regression/classification metrics, reports, and reproducible data generators |
+| Regression | Linear regression | Gradient descent and stable least-squares solution |
+| Classification | Logistic regression | Stable sigmoid/log-loss, L1 proximal step, L2 regularization |
+| Clustering | K-Means | K-Means++, empty-cluster recovery, `n_init`, deterministic seeds |
+| Probabilistic models | Gaussian mixture | Full-covariance EM, log-domain responsibilities, AIC/BIC, sampling |
+| Dimensionality reduction | PCA | SVD, transform and inverse transform, variance ratios |
+| Kernel methods | SVM | Linear SGD and kernel SMO optimizers |
+| Tree models | CART | Classification/regression, sample weights, validation-set pruning |
+| Ensembles | AdaBoost | Binary boosting with weighted CART stumps |
+| Neural networks | MLP classifier | One hidden layer and manual backpropagation |
 
-## Repository Structure
-
-```text
-machine_learning_from_scratch/
-├── config.py                      # Global random-state configuration
-├── data/
-│   ├── real/                      # Placeholder for real-world datasets
-│   └── synthetic/                 # Synthetic regression and clustering data
-├── experiments/
-│   ├── 01_linear_regression.py
-│   ├── 02_logistic_regression.py
-│   ├── 03_gmm.py
-│   ├── 04_svm.py
-│   └── 05_tree_ensemble.py
-├── models/
-│   ├── linear_model.py            # Linear and logistic regression
-│   ├── kmeans.py                  # K-Means
-│   ├── gmm.py                     # Gaussian mixture model
-│   ├── LDA.py                     # Linear discriminant analysis
-│   ├── SVM_model/
-│   │   ├── core/                  # SVM model and kernels
-│   │   └── optimizer/             # SGD and SMO optimizers
-│   ├── tree/decisiontreeCART.py   # CART decision tree
-│   └── neural network/BP.py       # Backpropagation neural network
-├── notebooks/playground.ipynb
-├── utils/metrics.py
-└── requirements.txt
-```
+The implementations favor clarity and verification over production performance. Logistic regression, SVM, AdaBoost, and the MLP currently support binary classification. GMM currently uses full covariance matrices.
 
 ## Installation
 
-Clone the repository and install the dependencies:
+Python 3.10 or newer is recommended.
 
 ```bash
-git clone https://github.com/hukaihukai123/machine_learning_from_scratch.git
-cd machine_learning_from_scratch
 python -m venv .venv
-```
-
-Activate the virtual environment:
-
-```bash
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
-# Linux / macOS
+# Windows
+.venv\Scripts\activate
+# Linux/macOS
 source .venv/bin/activate
+
+python -m pip install -e ".[dev]"
 ```
 
-Then install the requirements:
+## Quick start
+
+```python
+import numpy as np
+from models import LinearRegression
+
+rng = np.random.RandomState(42)
+X = rng.normal(size=(200, 2))
+y = 1.5 + X @ np.array([2.0, -3.0]) + rng.normal(scale=0.1, size=200)
+
+model = LinearRegression(method="closed_form").fit(X, y)
+print(model.coef_, model.intercept_)
+print(model.predict(X[:3]))
+```
+
+Run the smoke demo:
 
 ```bash
-python -m pip install -r requirements.txt
+python main.py
 ```
 
-## Quick Start
-
-Run commands from the repository root. Because the experiment scripts import top-level project packages, add the repository root to `PYTHONPATH` when running a script directly.
-
-```powershell
-# Windows PowerShell
-$env:PYTHONPATH = "."
-python experiments/03_gmm.py
-python experiments/04_svm.py
-python experiments/05_tree_ensemble.py
-```
+Run all correctness tests:
 
 ```bash
-# Linux / macOS
-PYTHONPATH=. python experiments/03_gmm.py
-PYTHONPATH=. python experiments/04_svm.py
-PYTHONPATH=. python experiments/05_tree_ensemble.py
+pytest
 ```
 
-The standalone LDA and BP demos can also be run directly:
+Run the deterministic sklearn comparison:
 
 ```bash
-python models/LDA.py
-python "models/neural network/BP.py"
+python benchmarks/compare_sklearn.py
 ```
 
-## Usage Examples
+The benchmark writes machine-readable results to `benchmarks/results.json`. Runtime measurements depend on the machine and should be treated as descriptive rather than universal.
 
-### Linear Regression
+Reference results on the fixed synthetic datasets:
 
-```python
-from data.synthetic.linear import make_linear_data
-from models.linear_model import linearregression
-from utils.metrics import get_all_metrics_regression
+| Model | This project | scikit-learn |
+| --- | ---: | ---: |
+| Linear regression (MSE, lower is better) | 0.036414 | 0.036414 |
+| Logistic regression (accuracy) | 0.8433 | 0.8400 |
+| K-Means (ARI) | 1.0000 | 1.0000 |
+| GMM (average log likelihood) | -3.752615 | -3.752615 |
+| PCA (explained-variance ratio sum) | 0.486454 | 0.486454 |
+| CART (accuracy) | 0.6633 | 0.6567 |
 
-X, y, theta_true = make_linear_data(
-    n_samples=500,
-    n_features=2,
-    noise=0.5,
-    random_state=42,
-)
+These numbers are regression checks on small synthetic data, not evidence that the implementations generally outperform scikit-learn. The benchmark also exposes a useful engineering gap: this CART implementation is much slower because it enumerates split candidates in Python.
 
-model = linearregression(
-    method="gd",
-    learning_rate=1e-3,
-    n_iterations=2000,
-)
-model.fit(X, y)
-y_pred, theta_pred = model.predict(X)
+## Verification
 
-print("True parameters:", theta_true)
-print("Learned parameters:", theta_pred)
-print(get_all_metrics_regression(y, y_pred))
+The test suite covers:
+
+- finite-difference gradient checking for logistic regression;
+- singular-design linear least squares;
+- deterministic K-Means initialization and non-increasing inertia;
+- normalized GMM responsibilities and non-decreasing EM likelihood;
+- PCA orthogonality and exact full-rank reconstruction;
+- CART classification, regression pruning, and sample weights;
+- AdaBoost training behavior;
+- consistent SVM `decision_function`/`predict` preprocessing;
+- a small MLP learning test;
+- metric edge cases.
+
+GitHub Actions runs the tests and sklearn benchmark on Python 3.10, 3.11, and 3.12.
+
+## Repository structure
+
+```text
+.
+├── models/                  # NumPy model implementations
+│   ├── linear_model.py
+│   ├── kmeans.py
+│   ├── gmm.py
+│   ├── PCA.py
+│   ├── neural_network.py
+│   ├── SVM_model/
+│   └── tree/
+├── data/synthetic/          # Reproducible toy-data generators
+├── experiments/             # Model-specific exploratory scripts
+├── benchmarks/              # Deterministic sklearn comparisons
+├── tests/                   # Automated correctness tests
+├── .github/workflows/       # CI configuration
+├── main.py                  # Minimal runnable example
+└── pyproject.toml           # Package and dependency metadata
 ```
 
-Set `method="closed_form"` (or any value other than `"gd"` in the current implementation) to use the normal-equation solution.
+## Design choices
 
-### Gaussian Mixture Model
+- Estimators follow a consistent `fit(...)->self` and `predict(...)` convention.
+- Learned public attributes use trailing underscores where practical (`coef_`, `labels_`, `weights_`).
+- Input dimensions, labels, finite values, and fitted state are checked at API boundaries.
+- Randomized models accept `random_state`; benchmarks use fixed seeds.
+- Probability calculations in logistic regression and GMM use numerically stable formulations.
 
-```python
-from data.synthetic.gmm_data import generate_gmm_data
-from models.gmm import GaussianMixtureModel
+Some legacy aliases remain (`linearregression`, `Kmeans`, `BPNet`) so older experiment code continues to run.
 
-X, y_true = generate_gmm_data(
-    n_samples=600,
-    weights=[0.4, 0.6],
-    means=[[0, 0], [4, 4]],
-    covariances=[[[1, 0], [0, 1]], [[1, 0.3], [0.3, 1]]],
-    random_state=42,
-)
+## Current limitations and roadmap
 
-model = GaussianMixtureModel(n_components=2, max_iter=100)
-model.fit(X)
+This remains an educational project rather than a production library. The next useful extension is a focused computer-vision experiment rather than another list of unrelated algorithms:
 
-labels = model.predict(X)
-probabilities = model.predict_proba(X)
-new_samples = model.sample(10)
-```
-
-### Kernel SVM with SMO
-
-```python
-from models.SVM_model.core.kernel import Kernel
-from models.SVM_model.core.svm import SVM
-from models.SVM_model.optimizer.smo import SMOOptimizer
-
-kernel = Kernel(kernel_type="rbf", gamma=0.5)
-model = SVM(C=1.0, kernel=kernel, optimizer=SMOOptimizer())
-model.fit(X_train, y_train)  # labels: {-1, 1} or {0, 1}
-y_pred = model.predict(X_test)
-```
-
-For a linear SVM trained with stochastic gradient descent:
-
-```python
-from models.SVM_model.optimizer.sgd import SGDOptimizer
-
-model = SVM(
-    C=1.0,
-    kernel=None,
-    optimizer=SGDOptimizer(lr=0.01, epochs=100),
-)
-```
-
-### CART Decision Tree
-
-```python
-from models.tree.decisiontreeCART import DecisionTreeCART
-
-tree = DecisionTreeCART(
-    max_depth=5,
-    min_samples_split=5,
-    min_samples_leaf=2,
-    min_impurity_decrease=1e-3,
-    discrete=True,
-)
-
-# X_val and y_val are optional and enable post-pruning.
-tree.fit(X_train, y_train, X_val, y_val)
-y_pred = tree.predict(X_test)
-```
-
-Use `discrete=False` to build a regression tree.
-
-## Implementation Notes
-
-- Model optimization is written manually with NumPy; the repository does not wrap scikit-learn estimators as its own models.
-- The SVM separates the model, kernel, and optimizer into independent components, making SGD and SMO interchangeable.
-- GMM training uses K-Means initialization before alternating between the E-step and M-step.
-- CART supports both early-stopping constraints and reduced-error post-pruning with a validation set.
-- Training histories such as `loss_history`, `lost_history`, and `log_likelihood_history` are retained for inspection.
-- Randomness can be controlled globally through `config.py` or locally through supported `random_state` parameters.
-
-## Current Scope
-
-This is an evolving learning project. The current focus is on readable implementations that expose the underlying algorithmic steps. Possible future improvements include:
-
-- consistent scikit-learn-style APIs and naming;
-- automated unit tests and benchmark reports;
-- vectorized and numerically stable GMM calculations using log-sum-exp;
-- multiclass extensions for logistic regression, LDA, and SVM;
-- additional preprocessing, validation, and visualization utilities;
-- packaging and continuous integration.
+1. evaluate PCA/HOG features with linear and RBF SVM on Fashion-MNIST;
+2. add a small NumPy Conv2D implementation with numerical gradient checks;
+3. compare MLP and CNN accuracy, runtime, initialization, and failure cases;
+4. publish plots and a concise experiment report.
 
 ## Author
 
-**Hu Kai**
-
-- GitHub: [@hukaihukai123](https://github.com/hukaihukai123)
-
-Contributions, suggestions, and issue reports are welcome.
+Hu Kai — [GitHub @hukaihukai123](https://github.com/hukaihukai123)

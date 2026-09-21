@@ -1,6 +1,7 @@
 import numpy as np
-from .base import *
-from ..core.svm import *
+from .base import BaseOptimizer
+
+
 class SMOOptimizer(BaseOptimizer):
     def __init__(self):
         pass
@@ -14,7 +15,7 @@ class SMOOptimizer(BaseOptimizer):
         b=0
         passes = 0
         max_passes = 50
-        # ===== TODO：SMO主循环（后面写）=====
+        # Sequential minimal optimization loop.
         while passes < max_passes:
             num_changed = 0
             for i in range(n_samples):

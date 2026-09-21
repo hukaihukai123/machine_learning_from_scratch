@@ -1,16 +1,9 @@
-# This is a sample Python script.
+"""Small smoke demo. See experiments/ for model-specific comparisons."""
+import numpy as np
+from models import LinearRegression
 
-# Press Ctrl+F5 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press F9 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+def main():
+    rng=np.random.RandomState(42); X=rng.normal(size=(200,2)); y=1.5+X@np.array([2.,-3.])+rng.normal(scale=.1,size=200)
+    model=LinearRegression(method='closed_form').fit(X,y)
+    print('coefficients:',model.coef_); print('intercept:',model.intercept_); print('training RMSE:',np.sqrt(np.mean((model.predict(X)-y)**2)))
+if __name__=='__main__': main()

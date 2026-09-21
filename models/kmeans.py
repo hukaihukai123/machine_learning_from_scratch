@@ -1,111 +1,47 @@
+"""K-Means clustering implemented with NumPy."""
 import numpy as np
-from config import *
-rng = get_rng()
-class Kmeans:
-    def __init__(self, n_clusters=5, max_iter=100,random_state=None,tol=1e-3,verbose=False,print_interval=100,Kmeans_plus_plus=True):
-        #X(m,n),
-        self.n_clusters = n_clusters#k
-        self.max_iter = max_iter
-        self.centroids = None#(m,)(0,k-1) m个样本的属于
-        self.cluster_centers = None#(k,n) 中心点集
-        self.loss_history=[]
-        self.random_state = random_state
-        self.tol = tol
-        self.verbose = verbose
-        self.print_interval = print_interval
-        self.Kmeans_plus_plus = Kmeans_plus_plus
-    def kmeans_plus_plus_init(self, X, rng):
-        m = X.shape[0]
 
-        first_idx = rng.randint(m)
-        centers = [X[first_idx].copy()]
-
-        for _ in range(1, self.n_clusters):
-            centers_array = np.asarray(centers)
-
-            distances = np.sum(
-                (X[:, None, :] - centers_array[None, :, :]) ** 2,
-                axis=2
-            )
-            min_distances = np.min(distances, axis=1)
-            total_distance = np.sum(min_distances)
-
-            if total_distance <= 1e-12:
-                remaining_idx = rng.randint(m)
-                centers.append(X[remaining_idx].copy())
-            else:
-                probabilities = min_distances / total_distance
-                next_idx = rng.choice(m, p=probabilities)
-                centers.append(X[next_idx].copy())
-
+class KMeans:
+    def __init__(self,n_clusters=5,max_iter=300,random_state=None,tol=1e-4,verbose=False,print_interval=10,kmeans_plus_plus=True,n_init=10,**legacy):
+        if 'Kmeans_plus_plus' in legacy: kmeans_plus_plus=legacy.pop('Kmeans_plus_plus')
+        if legacy: raise TypeError(f'unexpected arguments: {sorted(legacy)}')
+        self.n_clusters,self.max_iter,self.random_state,self.tol=n_clusters,max_iter,random_state,tol
+        self.verbose,self.print_interval,self.kmeans_plus_plus,self.n_init=verbose,print_interval,kmeans_plus_plus,n_init
+    def _init(self,X,rng):
+        if not self.kmeans_plus_plus: return X[rng.choice(len(X),self.n_clusters,replace=False)].copy()
+        centers=[X[rng.randint(len(X))].copy()]
+        for _ in range(1,self.n_clusters):
+            d=((X[:,None]-np.asarray(centers)[None])**2).sum(2).min(1); total=d.sum(); idx=rng.randint(len(X)) if total<=0 else rng.choice(len(X),p=d/total); centers.append(X[idx].copy())
         return np.asarray(centers)
-    def fit(self, X):
-        X = np.asarray(X, dtype=float)
-
-        if X.ndim != 2:
-            raise ValueError("X must be a 2D array")
-
-        if not 1 <= self.n_clusters <= len(X):
-            raise ValueError(
-            "n_clusters must satisfy 1 <= n_clusters <= n_samples"
-        )    
-
-        m,n=X.shape
-        k=self.n_clusters
-        if self.random_state is not None:
-            local_rng = np.random.RandomState(self.random_state)
-        else :
-            local_rng = get_rng()
-        
-        if self.Kmeans_plus_plus:
-            self.cluster_centers=self.kmeans_plus_plus_init(X,rng)
-        else:
-            center_choice=local_rng.choice(X.shape[0],self.n_clusters,replace=False)
-            self.cluster_centers = X[center_choice].copy()
-        loss1=0
-        loss2=1
-        iterations=0
-        M=np.zeros((m,k))
-        while np.abs(loss2 - loss1) / np.abs(loss1 + 1e-10) > self.tol:
-            distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
-            self.centroids=np.argmin(distances,axis=1)
-
-
-            new_centers = np.zeros((k, n))
-            counts = np.zeros(k)
-            for i in range(m):
-                label = self.centroids[i]
-                new_centers[label] += X[i]
-                counts[label] += 1
-            for j in range (k):
-                if counts[j] > 0:
-                    self.cluster_centers[j] = new_centers[j]/counts[j]
-                else:
-                    self.cluster_centers[j]=X[local_rng.choice(m)]
-            iterations+=1
-            if iterations>self.max_iter:
-                break
-            loss1=loss2
-            loss2=self._loss(X)
-            if  self.verbose and iterations % self.print_interval == 0:
-                print(f"Iteration {iterations}, loss: {loss2:.6f}")
-
-        return self
-
-    def _loss(self,X):
-        m=X.shape[0]
-        loss=0
-        for i in range(m):
-            cluster_idx = self.centroids[i]
-            diff = X[i] - self.cluster_centers[cluster_idx]
-            loss += np.sum(diff ** 2)
-        self.loss_history.append(loss)
-        return loss
-    def parameter(self):
-       return self.centroids,self.cluster_centers
-
-    def predict(self, X):
-        distances = np.sum((X[:, None, :] - self.cluster_centers[None, :, :]) ** 2,axis=2)
-        return np.argmin(distances, axis=1)
-
-
+    @staticmethod
+    def _assign(X,C):
+        d=((X[:,None]-C[None])**2).sum(2); labels=d.argmin(1); return labels,float(d[np.arange(len(X)),labels].sum())
+    def fit(self,X):
+        X=np.asarray(X,dtype=float)
+        if X.ndim!=2 or not len(X) or not np.isfinite(X).all(): raise ValueError('X must be a non-empty finite 2D array')
+        if not 1<=self.n_clusters<=len(X): raise ValueError('invalid n_clusters')
+        if self.n_init<1 or self.max_iter<1: raise ValueError('n_init and max_iter must be positive')
+        master=np.random.RandomState(self.random_state); best=None
+        for run in range(self.n_init):
+            rng=np.random.RandomState(master.randint(np.iinfo(np.int32).max)); C=self._init(X,rng); history=[]; converged=False
+            for iteration in range(1,self.max_iter+1):
+                labels,inertia=self._assign(X,C); history.append(inertia); new=C.copy()
+                for k in range(self.n_clusters):
+                    points=X[labels==k]
+                    if len(points): new[k]=points.mean(0)
+                    else: new[k]=X[((X-C[labels])**2).sum(1).argmax()]
+                shift=np.linalg.norm(new-C); C=new
+                if shift<=self.tol: converged=True; break
+            labels,inertia=self._assign(X,C); history.append(inertia); result=(inertia,C.copy(),labels.copy(),history,iteration,converged)
+            if self.verbose: print(f'run {run+1}: iterations={iteration}, inertia={inertia:.6g}')
+            if best is None or inertia<best[0]: best=result
+        self.inertia_,self.cluster_centers_,self.labels_,self.loss_history,self.n_iter_,self.converged_=best; self.n_features_in_=X.shape[1]
+        self.cluster_centers=self.cluster_centers_; self.centroids=self.labels_; return self
+    def predict(self,X):
+        if not hasattr(self,'cluster_centers_'): raise RuntimeError('fit must be called before predict')
+        X=np.asarray(X,dtype=float)
+        if X.ndim!=2 or X.shape[1]!=self.n_features_in_: raise ValueError('X has an incompatible shape')
+        return self._assign(X,self.cluster_centers_)[0]
+    def fit_predict(self,X): return self.fit(X).labels_
+    def parameter(self): return self.labels_,self.cluster_centers_
+Kmeans=KMeans

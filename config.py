@@ -16,7 +16,6 @@ class GlobalConfig:
             cls._rng = np.random.RandomState(random_state)
             np.random.seed(random_state)  # 同时设置numpy全局种子
             cls._is_initialized = True
-            print(f"Global config initialized with random_state={random_state}")
 
     @classmethod
     def get_random_state(cls):
